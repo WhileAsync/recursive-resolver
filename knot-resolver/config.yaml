@@ -1,0 +1,41 @@
+workers: "auto"
+
+network:
+  do-ipv4: true
+  do-ipv6: true
+  listen:
+    - interface: 127.0.0.1
+      port: 5775
+      kind: "dns"
+
+cache:
+  size-max: 1024M
+  prefill:
+    - origin: "."
+      url: "https://www.internic.net/domain/root.zone"
+  prefetch:
+    expiring: true
+    prediction:
+      enable: true
+      window: 15m
+      period: 24
+
+dnssec:
+  enable: true
+
+options:
+  glue-checking: "strict"
+  minimize: true
+  query-case-randomization: true
+  priming: true
+  rebinding-protection: true
+  refuse-no-rd: true
+  serve-stale: true
+
+logging:
+  level: "crit"
+
+local-data:
+  rpz:
+    - file: "/etc/knot-resolver/blocklists/aggregate.rpz"
+    - file: "/etc/knot-resolver/blocklists/nsfw-small.rpz"

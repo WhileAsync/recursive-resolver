@@ -1,0 +1,119 @@
+acl:
+  - "0.0.0.0/0"
+  - "::/0"
+
+backends:
+  - name: "knot-resolver"
+    address: "127.0.0.1:5775"
+    protocol: "Do53"
+
+binds:
+  - listen_address: "IPv4:853"
+    protocol: "DoT"
+    tls:
+      provider: "openssl"
+      certificates:
+        - certificate: "/etc/dnsdist/tls/fullchain.pem"
+          key: "/etc/dnsdist/tls/privkey.pem"
+  - listen_address: "[IPv6]:853"
+    protocol: "DoT"
+    tls:
+      provider: "openssl"
+      certificates:
+        - certificate: "/etc/dnsdist/tls/fullchain.pem"
+          key: "/etc/dnsdist/tls/privkey.pem"
+  - listen_address: "IPv4:443"
+    protocol: "DoH"
+    tls:
+      provider: "openssl"
+      certificates:
+        - certificate: "/etc/dnsdist/tls/fullchain.pem"
+          key: "/etc/dnsdist/tls/privkey.pem"
+    doh:
+      provider: "nghttp2"
+      paths:
+        - "/dns-query"
+  - listen_address: "[IPv6]:443"
+    protocol: "DoH"
+    tls:
+      provider: "openssl"
+      certificates:
+        - certificate: "/etc/dnsdist/tls/fullchain.pem"
+          key: "/etc/dnsdist/tls/privkey.pem"
+    doh:
+      provider: "nghttp2"
+      paths:
+        - "/dns-query"
+
+dynamic_rules:
+  - name: "Excessive query rate"
+    rules:
+      - type: "query-rate"
+        rate: 50
+        seconds: 10
+        action_duration: 60
+        comment: "Exceeded query rate"
+        action: "Drop"
+  - name: "Excessive ANY query rate"
+    rules:
+      - type: "qtype-rate"
+        rate: 5
+        seconds: 5
+        action_duration: 60
+        comment: "Exceeded ANY query rate"
+        action: "Drop"
+        qtype: "ANY"
+  - name: "Excessive SERVFAIL rate"
+    rules:
+      - type: "rcode-rate"
+        rate: 20
+        seconds: 10
+        action_duration: 120
+        comment: "Exceeded SERVFAIL rate"
+        action: "Drop"
+        rcode: "SERVFAIL"
+  - name: "Excessive NXDOMAIN rate"
+    rules:
+      - type: "rcode-rate"
+        rcode: "NXDOMAIN"
+        rate: 20
+        seconds: 10
+        comment: "Exceeded NXD rate"
+        action_duration: 120
+        action: "Drop"
+  - name: "Excessive response bandwidth"
+    rules:
+      - type: "response-byte-rate"
+        rate: 1000000
+        seconds: 10
+        action_duration: 60
+        comment: "Exceeded response bandwidth"
+        action: "Drop"
+
+dynamic_rules_settings:
+  purge_interval: 60
+
+query_rules:
+  - name: "Refuse AXFR, IXFR, NOTIFY and UPDATE queries"
+    selector:
+      type: "Or"
+      selectors:
+        - type: "Opcode"
+          code: "NOTIFY"
+        - type: "Opcode"
+          code: "UPDATE"
+        - type: "QType"
+          qtype: "AXFR"
+        - type: "QType"
+          qtype: "IXFR"
+    action:
+      type: "RCode"
+      rcode: "Refused"
+
+packet_caches:
+  - name: "pc"
+    size: 500000
+
+pools:
+  - name: ""
+    packet_cache: "pc"
